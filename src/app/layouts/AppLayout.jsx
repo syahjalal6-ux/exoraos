@@ -6,7 +6,7 @@ export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="min-h-screen flex bg-surface-muted">
+    <div className="min-h-screen bg-surface-muted">
 
       {/* Overlay mobile */}
       {sidebarOpen && (
@@ -16,11 +16,11 @@ export default function AppLayout() {
         />
       )}
 
-      {/* Sidebar - fixed, tidak makan space */}
+      {/* Sidebar */}
       <DashboardSidebar onClose={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden md:ml-64">
+      <div className="md:pl-64 flex flex-col min-h-screen">
 
         {/* Hamburger button - mobile only */}
         <div className="md:hidden flex items-center px-4 h-14 border-b border-surface-border bg-white">
@@ -34,7 +34,7 @@ export default function AppLayout() {
           </button>
         </div>
 
-        <main className="flex-1 overflow-auto scrollbar-thin">
+        <main className="flex-1 overflow-x-hidden">
           <Outlet />
         </main>
       </div>
