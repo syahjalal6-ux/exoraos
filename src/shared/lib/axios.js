@@ -9,12 +9,8 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token
-  if (token && config.data) {
-    try {
-      const body  = JSON.parse(config.data)
-      body._token = token
-      config.data = JSON.stringify(body)
-    } catch (_) {}
+  if (token && config.data && typeof config.data === 'object') {
+    config.data._token = token
   }
   return config
 }, (error) => Promise.reject(error))
