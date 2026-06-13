@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api",
+      "destination": "https://script.google.com/macros/s/AKfycbxFvMQbrubTemitq85glm9mMb5kv0ws4Z07RzDEWysJpnEB2ZqY78BZr3hM5XME-LDX/exec"
+    }
+  ]
+}
