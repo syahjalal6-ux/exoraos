@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Target, Package, History,
   FolderOpen, UserCheck, TrendingUp, Settings,
-  LogOut, BarChart2, Bot, CalendarCheck, PieChart,
+  LogOut, BarChart2, Bot, CalendarCheck, PieChart, X,
 } from 'lucide-react'
 import { cn } from '../../../shared/utils/cn.js'
 import { useSession }   from '../../auth/hooks/useSession.js'
@@ -53,7 +53,7 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function DashboardSidebar() {
+export default function DashboardSidebar({ onClose }) {
   const { user, logout } = useSession()
 
   return (
@@ -67,10 +67,20 @@ export default function DashboardSidebar() {
             <path d="M2 12l10 5 10-5"/>
           </svg>
         </div>
-        <div>
+        <div className="flex-1">
           <p className="text-white font-extrabold text-sm tracking-wide">EXORA</p>
           <p className="text-brand-400/60 text-2xs">Business OS</p>
         </div>
+
+        {/* Tombol close - mobile only */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="md:hidden p-1.5 rounded-lg text-brand-200/50 hover:bg-white/10 hover:text-white transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -81,6 +91,7 @@ export default function DashboardSidebar() {
             <div className="flex flex-col gap-0.5">
               {group.items.map(({ label, icon: Icon, to }) => (
                 <NavLink key={to} to={to}
+                  onClick={onClose}
                   className={({ isActive }) => cn(
                     'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
                     isActive
@@ -102,6 +113,7 @@ export default function DashboardSidebar() {
         {/* AI Assistant */}
         <div className="mt-2 pt-3 border-t border-white/5">
           <NavLink to="/ai"
+            onClick={onClose}
             className={({ isActive }) => cn(
               'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-150',
               isActive
