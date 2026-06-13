@@ -14,22 +14,17 @@ export async function fetchDashboardSummary() {
     ])
     const err = [customers, leads, products, transactions, projects, employees].find(r => r.error)
     if (err) throw new Error(err.error.message)
-
     const txns = transactions.data || []
     const income = txns.filter(t => t.type === 'income' && t.status !== 'unpaid')
     const totalRevenue = income.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
-
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const recentRevenue = income.filter(t => new Date(t.date) >= monthStart)
       .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
-
     const leadsData = leads.data || []
     const activeLeads = leadsData.filter(l => l.stage !== 'closed' && l.stage !== 'lost').length
-
     const projectsData = projects.data || []
     const activeProjects = projectsData.filter(p => p.status === 'active').length
-
     const stats = {
       total_customers: (customers.data || []).length,
       total_revenue: totalRevenue,
@@ -41,8 +36,6 @@ export async function fetchDashboardSummary() {
       total_projects: projectsData.length,
       total_employees: (employees.data || []).filter(e => e.status === 'active').length,
     }
-
-    // Revenue trend - last 7 days
     const revenueTrend = []
     for (let i = 6; i >= 0; i--) {
       const d = new Date(); d.setDate(d.getDate() - i)
@@ -51,16 +44,26 @@ export async function fetchDashboardSummary() {
         .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
       revenueTrend.push({ label: d.toLocaleDateString('id-ID', { weekday: 'short' }), value: dayTotal })
     }
-
-    // Leads pipeline by stage
     const stageLabels = { new:'New', contacted:'Contacted', qualified:'Qualified', proposal:'Proposal', negotiation:'Negotiation', closed:'Closed', lost:'Lost' }
     const stageCounts = {}
     Object.keys(stageLabels).forEach(s => stageCounts[s] = 0)
     leadsData.forEach(l => { const s = (l.stage || 'new').toLowerCase(); if (stageCounts[s] !== undefined) stageCounts[s]++ })
     const leadsPipeline = Object.keys(stageLabels).map(s => ({ label: stageLabels[s], value: stageCounts[s] }))
-
     return { stats, revenue_trend: revenueTrend, leads_pipeline: leadsPipeline }
   }
-  const r = await apiClient.post('', { action: 'dashboard.getSummary', payload: {} })
-  return r.data.data
+
+  try {
+    const r = await apiClient.post('', { action: 'dashboard.getSummary', payload: {} })
+    return r.data.data
+  } catch (err) {
+    return {
+      stats: {
+        total_customers: 0, total_revenue: 0, recent_revenue: 0,
+        active_leads: 0, total_leads: 0, total_products: 0,
+        active_projects: 0, total_projects: 0, total_employees: 0
+      },
+      revenue_trend: [],
+      leads_pipeline: []
+    }
+  }
 }
