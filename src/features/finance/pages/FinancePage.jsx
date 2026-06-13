@@ -1,4 +1,4 @@
-import { useState }       from 'react'
+import { useState, useMemo } from 'react'
 import { Plus }           from 'lucide-react'
 import Topbar             from '../../../shared/components/ui/Topbar.jsx'
 import Button             from '../../../shared/components/ui/Button.jsx'
@@ -30,6 +30,31 @@ const modal    = "fixed inset-0 z-50 flex items-center justify-center p-4 bg-bla
 const modalBox = "bg-white rounded-2xl shadow-modal border border-surface-border w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto animate-slide-up"
 const sel      = "h-9 px-3 rounded-lg border border-surface-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 hover:border-brand-300 transition-all"
 
+// Generate year options from 2020 to current year
+const currentYear = new Date().getFullYear()
+const YEAR_OPTIONS = Array.from({ length: currentYear - 2019 }, (_, i) => currentYear - i)
+
+function buildTrend(transactions, year, months = 6) {
+  const result = []
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(year, new Date().getMonth() - i, 1)
+    // if year selected != current year, show all 12 months of that year
+    const targetYear = parseInt(year)
+    const isCurrentYear = targetYear === currentYear
+    const month = isCurrentYear ? d.getMonth() : i
+    const y = isCurrentYear ? d.getFullYear() : targetYear
+    const label = new Date(y, isCurrentYear ? month : i, 1).toLocaleString('id-ID', { month: 'short', year: '2-digit' })
+    const inc = transactions.filter(t => {
+      const td = new Date(t.date); return t.type === 'income' && t.status !== 'unpaid' && td.getFullYear() === y && td.getMonth() === (isCurrentYear ? month : i)
+    }).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+    const exp = transactions.filter(t => {
+      const td = new Date(t.date); return t.type === 'expense' && t.status !== 'unpaid' && td.getFullYear() === y && td.getMonth() === (isCurrentYear ? month : i)
+    }).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+    result.push({ label, income: inc, expense: exp })
+  }
+  return result
+}
+
 export default function FinancePage() {
   const { transactions,summary,isLoading,saving,error,reload,create,update,remove,importRows } = useTransactions()
   const [search,setSearch]       = useState('')
@@ -37,17 +62,49 @@ export default function FinancePage() {
   const [statusFilter,setStatus] = useState('')
   const [dateFrom,setFrom]       = useState('')
   const [dateTo,setTo]           = useState('')
+  const [chartYear,setChartYear] = useState(String(currentYear))
   const [showForm,setShowForm]   = useState(false)
   const [editTarget,setEdit]     = useState(null)
   const [deleteTarget,setDelete] = useState(null)
+
   const filtered = filterTransactions(transactions,{search,type:typeFilter,status:statusFilter,dateFrom,dateTo})
+
+  // Build trend from raw transactions based on selected year (client-side, no extra API call)
+  const chartTrend = useMemo(() => {
+    if (!transactions.length) return summary?.trend ?? []
+    const year = parseInt(chartYear)
+    const months = 12
+    const result = []
+    for (let m = 0; m < months; m++) {
+      const label = new Date(year, m, 1).toLocaleString('id-ID', { month: 'short', year: '2-digit' })
+      const inc = transactions.filter(t => {
+        const td = new Date(t.date)
+        return t.type === 'income' && t.status !== 'unpaid' && td.getFullYear() === year && td.getMonth() === m
+      }).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+      const exp = transactions.filter(t => {
+        const td = new Date(t.date)
+        return t.type === 'expense' && t.status !== 'unpaid' && td.getFullYear() === year && td.getMonth() === m
+      }).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+      result.push({ label, income: inc, expense: exp })
+    }
+    return result
+  }, [transactions, chartYear, summary])
+
   return (
     <div className="flex flex-col min-h-full">
       <Topbar title="Finance" subtitle={`${transactions.length} transaksi`} onRefresh={reload} isRefreshing={isLoading}/>
       <div className="flex-1 p-6 flex flex-col gap-5">
         {error && <Alert type="error" message={error}/>}
         <FinanceStatCards summary={summary} isLoading={isLoading}/>
-        <FinanceChart trend={summary?.trend??[]} isLoading={isLoading && !summary}/>
+        <div className="bg-white border border-surface-border rounded-xl p-5 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <div><h3 className="text-sm font-bold text-ink">Tren Keuangan</h3><p className="text-2xs text-ink-faint mt-0.5">12 bulan dalam tahun dipilih</p></div>
+            <select value={chartYear} onChange={e=>setChartYear(e.target.value)} className={sel + " w-28"}>
+              {YEAR_OPTIONS.map(y=><option key={y} value={String(y)}>{y}</option>)}
+            </select>
+          </div>
+          <FinanceChart trend={chartTrend} isLoading={isLoading && !summary}/>
+        </div>
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div className="flex flex-wrap gap-2">
             <CrmSearchBar value={search} onChange={setSearch} placeholder="Cari transaksi…" className="w-56"/>
