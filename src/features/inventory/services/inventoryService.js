@@ -13,6 +13,7 @@ function mapInventoryRow(row) {
     product_name: p.name || '',
     product_sku: p.sku || '',
     product_category: p.category || '',
+    product_description: p.description || '',
     product_price: p.price || 0,
     product_cost: p.cost || 0,
     product_unit: p.unit || 'pcs',
