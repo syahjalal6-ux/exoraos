@@ -10,7 +10,7 @@ export default defineConfig({
         target: 'https://script.google.com',
         changeOrigin: true,
         rewrite: (path) =>
-          path.replace(/^\/api/, '/macros/s/YOUR_DEPLOYMENT_ID/exec'),
+          path.replace(/^\/api/, '/macros/s/AKfycbxFvMQbrubTemitq85glm9mMb5kv0ws4Z07RzDEWysJpnEB2ZqY78BZr3hM5XME-LDX/exec'),
       },
     },
   },
