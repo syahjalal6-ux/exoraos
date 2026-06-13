@@ -4,15 +4,6 @@ import Button from './Button.jsx'
 import { exportRows, downloadTemplate, parseImportFile } from '../../lib/excelUtils.js'
 import { useToast } from '../../hooks/useToast.js'
 
-/**
- * Reusable Export / Template / Import bar for list pages.
- *
- * @param {object} props
- * @param {Array<object>} props.data       - rows currently shown (for export)
- * @param {Array<{key:string,label:string}>} props.columns - field <-> column mapping
- * @param {string} props.filename          - base filename (no extension)
- * @param {(rows: Array<object>) => Promise<Array<{ok:boolean,error?:string}>>} props.onImport
- */
 export default function ExportImportBar({ data, columns, filename, onImport }) {
   const fileRef = useRef(null)
   const toast = useToast()
@@ -22,9 +13,7 @@ export default function ExportImportBar({ data, columns, filename, onImport }) {
     if (!data?.length) { toast.error('Tidak ada data untuk di-export'); return }
     exportRows(data, columns, filename)
   }
-
   const handleTemplate = () => downloadTemplate(columns, filename)
-
   const handleFile = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -45,7 +34,7 @@ export default function ExportImportBar({ data, columns, filename, onImport }) {
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button variant="secondary" size="sm" leftIcon={<Download className="w-4 h-4"/>} onClick={handleExport}>Export</Button>
       <Button variant="secondary" size="sm" leftIcon={<FileDown className="w-4 h-4"/>} onClick={handleTemplate}>Template</Button>
       <Button variant="secondary" size="sm" leftIcon={<Upload className="w-4 h-4"/>} loading={busy} onClick={() => fileRef.current?.click()}>Import</Button>
