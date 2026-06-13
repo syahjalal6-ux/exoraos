@@ -9,7 +9,7 @@ export default function ProductTable({ inventory,isLoading,onEdit,onDelete,onAdj
     <div className="overflow-x-auto">
       <table className="w-full text-left">
         <thead><tr className="border-b border-surface-border bg-surface-muted/50">
-          {['Produk','Kategori','Stok','Status','Harga Jual','Aksi'].map(h=><th key={h} className="px-4 py-3 text-2xs font-bold text-ink-muted uppercase tracking-wider">{h}</th>)}
+          {['Produk','SKU','Kategori','Deskripsi','Stok','Status','Harga Jual','Harga Modal','Aksi'].map(h=><th key={h} className="px-4 py-3 text-2xs font-bold text-ink-muted uppercase tracking-wider whitespace-nowrap">{h}</th>)}
         </tr></thead>
         <tbody className="bg-white">{inventory.map(item=><ProductRow key={item.product_id} item={item} onEdit={onEdit} onDelete={onDelete} onAdjust={onAdjust}/>)}</tbody>
       </table>
