@@ -16,16 +16,11 @@ export default function AppLayout() {
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-30 md:static md:translate-x-0 transition-transform duration-300
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <DashboardSidebar onClose={() => setSidebarOpen(false)} />
-      </div>
+      {/* Sidebar - fixed, tidak makan space */}
+      <DashboardSidebar onClose={() => setSidebarOpen(false)} sidebarOpen={sidebarOpen} />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden md:ml-64">
 
         {/* Hamburger button - mobile only */}
         <div className="md:hidden flex items-center px-4 h-14 border-b border-surface-border bg-white">
