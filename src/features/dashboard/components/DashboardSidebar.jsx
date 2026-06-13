@@ -53,11 +53,15 @@ const NAV_GROUPS = [
   },
 ]
 
-export default function DashboardSidebar({ onClose }) {
+export default function DashboardSidebar({ onClose, sidebarOpen }) {
   const { user, logout } = useSession()
 
   return (
-    <aside className="w-64 sidebar-gradient min-h-screen flex flex-col shrink-0 border-r border-white/5">
+    <aside className={cn(
+      'fixed inset-y-0 left-0 z-30 w-64 sidebar-gradient flex flex-col border-r border-white/5 transition-transform duration-300',
+      'md:translate-x-0',
+      sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+    )}>
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 h-14 border-b border-white/5">
         <div className="w-8 h-8 bg-gradient-to-br from-brand-500 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-brand-900/50">
@@ -73,14 +77,12 @@ export default function DashboardSidebar({ onClose }) {
         </div>
 
         {/* Tombol close - mobile only */}
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="md:hidden p-1.5 rounded-lg text-brand-200/50 hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+        <button
+          onClick={onClose}
+          className="md:hidden p-1.5 rounded-lg text-brand-200/50 hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Nav */}
