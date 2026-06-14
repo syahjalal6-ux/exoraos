@@ -23,7 +23,7 @@ export const bulkCreateTransactions = (rows) => adapter.bulkCreate(rows.map(r =>
 
 export async function fetchFinanceSummary() {
   if (isSupabase()) {
-    const { data: all, error } = await supabase.from('transactions').select('*')
+    const { data: all, error } = await supabase.from('transactions').select('*').limit(10000)
     if (error) throw new Error(error.message)
 
     const income  = all.filter(t => t.type === 'income')
@@ -41,12 +41,10 @@ export async function fetchFinanceSummary() {
     const unpaidIncome  = sum(income.filter(t => t.status === 'unpaid'))
     const unpaidExpense = sum(expense.filter(t => t.status === 'unpaid'))
 
-    // Detect earliest transaction year to set as default trend reference
     const years = all.map(t => new Date(t.date).getFullYear()).filter(Boolean)
     const minYear = years.length ? Math.min(...years) : now.getFullYear()
     const maxYear = years.length ? Math.max(...years) : now.getFullYear()
 
-    // Build 12-month trend for the year that has the most transactions
     const yearCounts = {}
     all.forEach(t => {
       const y = new Date(t.date).getFullYear()
@@ -76,6 +74,5 @@ export async function fetchFinanceSummary() {
       trend, trend_year: trendYear, min_year: minYear, max_year: maxYear,
     }
   }
-
   return (await apiClient.post('', { action: 'finance.getSummary', payload: {} })).data.data
 }
