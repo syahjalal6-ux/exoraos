@@ -3,7 +3,7 @@
 import { supabase } from './supabaseClient.js'
 
 async function fetchAll(table, select = '*') {
-  const { data, error } = await supabase.from(table).select(select)
+  const { data, error } = await supabase.from(table).select(select).limit(10000)
   if (error) throw new Error(error.message)
   return data || []
 }
