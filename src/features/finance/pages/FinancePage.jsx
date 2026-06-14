@@ -47,30 +47,33 @@ export default function FinancePage() {
 
   const filtered = filterTransactions(transactions,{search,type:typeFilter,status:statusFilter,dateFrom,dateTo})
 
-  // Gunakan logika SAMA persis dengan ReportsService.getRevenueReport()
-  // Exclude unpaid, hitung per bulan dari transactions yang sudah di-fetch
   const chartTrend = useMemo(() => {
-    if (!transactions.length) return summary?.trend ?? []
     const year = parseInt(chartYear)
+
+    // Pakai summary.trend langsung kalau tahunnya cocok (data lengkap 10000 transaksi)
+    if (summary?.trend?.length && summary?.trend_year === year) {
+      return summary.trend
+    }
+
+    // Fallback: hitung manual dari transactions kalau ganti tahun lain
+    if (!transactions.length) return []
+
     const income  = transactions.filter(t => t.type === 'income'  && t.status !== 'unpaid')
     const expense = transactions.filter(t => t.type === 'expense' && t.status !== 'unpaid')
-    const result = []
+    const result  = []
     for (let m = 0; m < 12; m++) {
       const label = new Date(year, m, 1).toLocaleString('id-ID', { month: 'short', year: '2-digit' })
-      const inc = income.filter(t => {
-        const td = new Date(t.date)
-        return td.getFullYear() === year && td.getMonth() === m
-      }).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
-      const exp = expense.filter(t => {
-        const td = new Date(t.date)
-        return td.getFullYear() === year && td.getMonth() === m
-      }).reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+      const inc = income
+        .filter(t => { const td = new Date(t.date); return td.getFullYear() === year && td.getMonth() === m })
+        .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+      const exp = expense
+        .filter(t => { const td = new Date(t.date); return td.getFullYear() === year && td.getMonth() === m })
+        .reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
       result.push({ label, income: inc, expense: exp })
     }
     return result
   }, [transactions, chartYear, summary])
 
-  // Detect available years from transactions for smart default
   const availableYears = useMemo(() => {
     if (!transactions.length) return YEAR_OPTIONS
     const years = [...new Set(transactions.map(t => new Date(t.date).getFullYear()))].sort((a,b) => b-a)
@@ -85,7 +88,10 @@ export default function FinancePage() {
         <FinanceStatCards summary={summary} isLoading={isLoading}/>
         <div className="bg-white border border-surface-border rounded-xl p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
-            <div><h3 className="text-sm font-bold text-ink">Tren Keuangan</h3><p className="text-2xs text-ink-faint mt-0.5">12 bulan dalam tahun dipilih</p></div>
+            <div>
+              <h3 className="text-sm font-bold text-ink">Tren Keuangan</h3>
+              <p className="text-2xs text-ink-faint mt-0.5">12 bulan dalam tahun dipilih</p>
+            </div>
             <select value={chartYear} onChange={e=>setChartYear(e.target.value)} className={sel + " w-28"}>
               {availableYears.map(y=><option key={y} value={String(y)}>{y}</option>)}
             </select>
@@ -95,8 +101,14 @@ export default function FinancePage() {
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div className="flex flex-wrap gap-2">
             <CrmSearchBar value={search} onChange={setSearch} placeholder="Cari transaksi…" className="w-56"/>
-            <select value={typeFilter}   onChange={e=>setType(e.target.value)}   className={sel}><option value="">Semua tipe</option>{TRANSACTION_TYPES.map(t=><option key={t} value={t} className="capitalize">{t}</option>)}</select>
-            <select value={statusFilter} onChange={e=>setStatus(e.target.value)} className={sel}><option value="">Semua status</option>{TRANSACTION_STATUSES.map(s=><option key={s} value={s} className="capitalize">{s}</option>)}</select>
+            <select value={typeFilter}   onChange={e=>setType(e.target.value)}   className={sel}>
+              <option value="">Semua tipe</option>
+              {TRANSACTION_TYPES.map(t=><option key={t} value={t} className="capitalize">{t}</option>)}
+            </select>
+            <select value={statusFilter} onChange={e=>setStatus(e.target.value)} className={sel}>
+              <option value="">Semua status</option>
+              {TRANSACTION_STATUSES.map(s=><option key={s} value={s} className="capitalize">{s}</option>)}
+            </select>
             <input type="date" value={dateFrom} onChange={e=>setFrom(e.target.value)} className={sel}/>
             <input type="date" value={dateTo}   onChange={e=>setTo(e.target.value)}   className={sel}/>
           </div>
@@ -109,9 +121,32 @@ export default function FinancePage() {
           <TransactionTable transactions={filtered} isLoading={isLoading} onEdit={setEdit} onDelete={setDelete}/>
         </div>
       </div>
-      {showForm && <div className={modal}><div className={modalBox}><h2 className="text-sm font-bold text-ink mb-5">Tambah Transaksi</h2><TransactionForm onSubmit={async d=>{await create(d);setShowForm(false)}} onCancel={()=>setShowForm(false)} saving={saving}/></div></div>}
-      {editTarget && <div className={modal}><div className={modalBox}><h2 className="text-sm font-bold text-ink mb-5">Edit Transaksi</h2><TransactionForm initial={editTarget} onSubmit={async d=>{await update(editTarget.id,d);setEdit(null)}} onCancel={()=>setEdit(null)} saving={saving}/></div></div>}
-      {deleteTarget && <DeleteConfirmModal title="Hapus transaksi" description={`"${deleteTarget.description}" akan dihapus permanen.`} onConfirm={async()=>{await remove(deleteTarget.id);setDelete(null)}} onCancel={()=>setDelete(null)} isLoading={saving}/>}
+
+      {showForm && (
+        <div className={modal}>
+          <div className={modalBox}>
+            <h2 className="text-sm font-bold text-ink mb-5">Tambah Transaksi</h2>
+            <TransactionForm onSubmit={async d=>{await create(d);setShowForm(false)}} onCancel={()=>setShowForm(false)} saving={saving}/>
+          </div>
+        </div>
+      )}
+      {editTarget && (
+        <div className={modal}>
+          <div className={modalBox}>
+            <h2 className="text-sm font-bold text-ink mb-5">Edit Transaksi</h2>
+            <TransactionForm initial={editTarget} onSubmit={async d=>{await update(editTarget.id,d);setEdit(null)}} onCancel={()=>setEdit(null)} saving={saving}/>
+          </div>
+        </div>
+      )}
+      {deleteTarget && (
+        <DeleteConfirmModal
+          title="Hapus transaksi"
+          description={`"${deleteTarget.description}" akan dihapus permanen.`}
+          onConfirm={async()=>{await remove(deleteTarget.id);setDelete(null)}}
+          onCancel={()=>setDelete(null)}
+          isLoading={saving}
+        />
+      )}
     </div>
   )
 }
