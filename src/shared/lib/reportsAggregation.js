@@ -11,33 +11,78 @@ async function fetchAll(table, select = '*') {
 export async function getRevenueReport() {
   const transactions = await fetchAll('transactions')
   const now = new Date(), year = now.getFullYear(), month = now.getMonth()
+  const sum = (arr) => arr.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+
+  // Paid + partial (exclude unpaid)
   const income  = transactions.filter(t => t.type === 'income'  && t.status !== 'unpaid')
   const expense = transactions.filter(t => t.type === 'expense' && t.status !== 'unpaid')
-  const sum = (arr) => arr.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+
+  // Paid only
+  const paidIncome  = transactions.filter(t => t.type === 'income'  && t.status === 'paid')
+  const paidExpense = transactions.filter(t => t.type === 'expense' && t.status === 'paid')
+
+  // Partial only
+  const partialIncome  = transactions.filter(t => t.type === 'income'  && t.status === 'partial')
+  const partialExpense = transactions.filter(t => t.type === 'expense' && t.status === 'partial')
 
   const totalIncome  = sum(income)
   const totalExpense = sum(expense)
-  const monthIncome  = sum(income.filter(t  => { const d = new Date(t.date); return d.getFullYear() === year && d.getMonth() === month }))
-  const monthExpense = sum(expense.filter(t => { const d = new Date(t.date); return d.getFullYear() === year && d.getMonth() === month }))
 
+  const inMonth = (t) => { const d = new Date(t.date); return d.getFullYear() === year && d.getMonth() === month }
+
+  const monthIncome         = sum(income.filter(inMonth))
+  const monthExpense        = sum(expense.filter(inMonth))
+  const monthPaidIncome     = sum(paidIncome.filter(inMonth))
+  const monthPaidExpense    = sum(paidExpense.filter(inMonth))
+  const monthPartialIncome  = sum(partialIncome.filter(inMonth))
+  const monthPartialExpense = sum(partialExpense.filter(inMonth))
+
+  // By category (income only)
   const byCategory = {}
   income.forEach(t => { const cat = t.category || 'Other'; byCategory[cat] = (byCategory[cat] || 0) + (parseFloat(t.amount) || 0) })
 
+  // Monthly trend: 12 bulan terakhir dengan breakdown paid vs partial
   const monthly = []
   for (let i = 11; i >= 0; i--) {
     const d = new Date(year, month - i, 1)
     const y = d.getFullYear(), m = d.getMonth()
     const label = d.toLocaleString('id-ID', { month: 'short', year: '2-digit' })
-    const inc = sum(income.filter(t  => { const td = new Date(t.date); return td.getFullYear() === y && td.getMonth() === m }))
-    const exp = sum(expense.filter(t => { const td = new Date(t.date); return td.getFullYear() === y && td.getMonth() === m }))
-    monthly.push({ label, income: inc, expense: exp, profit: inc - exp })
+
+    const inThisMonth = (t) => { const td = new Date(t.date); return td.getFullYear() === y && td.getMonth() === m }
+
+    const inc        = sum(income.filter(inThisMonth))
+    const exp        = sum(expense.filter(inThisMonth))
+    const paidInc    = sum(paidIncome.filter(inThisMonth))
+    const paidExp    = sum(paidExpense.filter(inThisMonth))
+    const partialInc = sum(partialIncome.filter(inThisMonth))
+    const partialExp = sum(partialExpense.filter(inThisMonth))
+
+    monthly.push({
+      label,
+      income:          inc,
+      expense:         exp,
+      profit:          inc - exp,
+      paid_income:     paidInc,
+      paid_expense:    paidExp,
+      partial_income:  partialInc,
+      partial_expense: partialExp,
+    })
   }
 
   return {
-    total_income: totalIncome, total_expense: totalExpense, net_profit: totalIncome - totalExpense,
-    month_income: monthIncome, month_expense: monthExpense, month_profit: monthIncome - monthExpense,
-    profit_margin: totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0,
-    by_category: byCategory, monthly_trend: monthly,
+    total_income:          totalIncome,
+    total_expense:         totalExpense,
+    net_profit:            totalIncome - totalExpense,
+    month_income:          monthIncome,
+    month_expense:         monthExpense,
+    month_profit:          monthIncome - monthExpense,
+    month_paid_income:     monthPaidIncome,
+    month_paid_expense:    monthPaidExpense,
+    month_partial_income:  monthPartialIncome,
+    month_partial_expense: monthPartialExpense,
+    profit_margin:         totalIncome > 0 ? Math.round(((totalIncome - totalExpense) / totalIncome) * 100) : 0,
+    by_category:           byCategory,
+    monthly_trend:         monthly,
   }
 }
 
@@ -67,10 +112,10 @@ export async function getInventoryReport() {
   const byCategory = {}
   inventory.forEach(inv => {
     const product = inv.products || {}
-    const qty = parseFloat(inv.quantity) || 0
+    const qty    = parseFloat(inv.quantity) || 0
     const minQty = parseFloat(inv.min_stock) || 0
-    const price = parseFloat(product.price) || 0
-    const cat = product.category || 'Uncategorized'
+    const price  = parseFloat(product.price) || 0
+    const cat    = product.category || 'Uncategorized'
     totalValue += qty * price
     if (qty === 0) outOfStock++
     else if (qty <= minQty && minQty > 0) lowStock++
@@ -86,7 +131,7 @@ export async function getHrReport() {
   const byDept = {}
   employees.forEach(e => { const d = e.department || 'Uncategorized'; byDept[d] = (byDept[d] || 0) + 1 })
   const totalSalary = active.reduce((s, e) => s + (parseFloat(e.salary) || 0), 0)
-  const avgSalary = active.length ? Math.round(totalSalary / active.length) : 0
+  const avgSalary   = active.length ? Math.round(totalSalary / active.length) : 0
   return { total: employees.length, active: active.length, total_salary: totalSalary, avg_salary: avgSalary, by_department: byDept }
 }
 
@@ -99,7 +144,7 @@ export async function getProjectsReport() {
     const s = p.status || 'planning'
     byStatus[s] = (byStatus[s] || 0) + 1
     totalBudget += parseFloat(p.budget) || 0
-    totalSpent  += parseFloat(p.spent) || 0
+    totalSpent  += parseFloat(p.spent)  || 0
     if (p.end_date && new Date(p.end_date) < now && s !== 'completed' && s !== 'cancelled') overdue++
   })
   return {
