@@ -2,26 +2,13 @@ import apiClient from './axios.js'
 import { supabase } from './supabaseClient.js'
 import { getActiveBackend, BACKENDS } from './backendStore.js'
 
-/**
- * Generic CRUD adapter factory.
- * Produces { getAll, getById, create, update, remove } that route to
- * either GAS (axios → Apps Script Router) or Supabase (postgrest) based
- * on the active backend toggle (Settings → Backend).
- *
- * @param {object} config
- * @param {string} config.table       - Supabase table name
- * @param {object} config.gas         - GAS action names: { getAll, getById, create, update, remove }
- * @param {object} [config.order]     - Default order for getAll: { column, ascending }
- * @param {function} [config.fromRow] - Optional transform: supabase row -> app shape
- * @param {function} [config.toRow]   - Optional transform: app data -> supabase row
- */
 export function createCrudAdapter({ table, gas, order = { column: 'created_at', ascending: false }, fromRow, toRow }) {
   const map = (row) => (fromRow ? fromRow(row) : row)
   const unmap = (data) => (toRow ? toRow(data) : data)
 
   async function getAll(filters = {}) {
     if (getActiveBackend() === BACKENDS.SUPABASE) {
-      let query = supabase.from(table).select('*')
+      let query = supabase.from(table).select('*').limit(10000)
       Object.entries(filters).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') query = query.eq(k, v) })
       if (order?.column) query = query.order(order.column, { ascending: !!order.ascending })
       const { data, error } = await query
@@ -90,14 +77,6 @@ export function createCrudAdapter({ table, gas, order = { column: 'created_at', 
   return { getAll, getById, create, update, remove, bulkCreate }
 }
 
-/**
- * Helper to call a custom GAS action OR a Supabase RPC / query function,
- * for endpoints that don't fit plain CRUD (summaries, reports, stock ops, etc).
- *
- * @param {object} config
- * @param {string} config.gasAction     - GAS action name
- * @param {function} config.supabaseFn  - async (payload) => result, executed when backend === supabase
- */
 export async function callCustom({ gasAction, supabaseFn, payload = {} }) {
   if (getActiveBackend() === BACKENDS.SUPABASE) {
     return supabaseFn(payload)
