@@ -12,6 +12,7 @@ import CrmSearchBar       from '../../crm/components/shared/CrmSearchBar.jsx'
 import ExportImportBar    from '../../../shared/components/ui/ExportImportBar.jsx'
 import { useTransactions } from '../hooks/useTransactions.js'
 import { filterTransactions,TRANSACTION_TYPES,TRANSACTION_STATUSES } from '../utils/financeHelpers.js'
+import { formatCurrency } from '../../dashboard/utils/dashboardHelpers.js'
 
 const TRANSACTION_COLUMNS = [
   { key:'type', label:'Tipe' },
@@ -47,15 +48,28 @@ export default function FinancePage() {
 
   const filtered = filterTransactions(transactions,{search,type:typeFilter,status:statusFilter,dateFrom,dateTo})
 
+  // Summary bar untuk filtered transactions
+  const filteredSummary = useMemo(() => {
+    const sum = (arr) => arr.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0)
+    const income  = filtered.filter(t => t.type === 'income')
+    const expense = filtered.filter(t => t.type === 'expense')
+    return {
+      total:   filtered.length,
+      income:  sum(income),
+      expense: sum(expense),
+      profit:  sum(income) - sum(expense),
+    }
+  }, [filtered])
+
+  const hasFilter = search || typeFilter || statusFilter || dateFrom || dateTo
+
   const chartTrend = useMemo(() => {
     const year = parseInt(chartYear)
 
-    // Pakai summary.trend langsung kalau tahunnya cocok (data lengkap 10000 transaksi)
     if (summary?.trend?.length && summary?.trend_year === year) {
       return summary.trend
     }
 
-    // Fallback: hitung manual dari transactions kalau ganti tahun lain
     if (!transactions.length) return []
 
     const income  = transactions.filter(t => t.type === 'income'  && t.status !== 'unpaid')
@@ -98,6 +112,8 @@ export default function FinancePage() {
           </div>
           <FinanceChart trend={chartTrend} isLoading={isLoading && !summary}/>
         </div>
+
+        {/* Filter bar */}
         <div className="flex flex-wrap gap-2 items-center justify-between">
           <div className="flex flex-wrap gap-2">
             <CrmSearchBar value={search} onChange={setSearch} placeholder="Cari transaksi…" className="w-56"/>
@@ -117,6 +133,22 @@ export default function FinancePage() {
             <Button size="sm" leftIcon={<Plus className="w-4 h-4"/>} onClick={()=>setShowForm(true)}>Tambah transaksi</Button>
           </div>
         </div>
+
+        {/* Summary bar — muncul kalau ada filter aktif */}
+        {hasFilter && (
+          <div className="flex flex-wrap items-center gap-3 px-4 py-2.5 bg-brand-50 border border-brand-100 rounded-xl text-xs">
+            <span className="text-ink-muted font-medium">{filteredSummary.total} transaksi</span>
+            <span className="text-ink-faint">·</span>
+            <span className="text-green-600 font-semibold">Income: {formatCurrency(filteredSummary.income)}</span>
+            <span className="text-ink-faint">·</span>
+            <span className="text-red-500 font-semibold">Expense: {formatCurrency(filteredSummary.expense)}</span>
+            <span className="text-ink-faint">·</span>
+            <span className={`font-semibold ${filteredSummary.profit >= 0 ? 'text-brand-600' : 'text-red-500'}`}>
+              Profit: {formatCurrency(filteredSummary.profit)}
+            </span>
+          </div>
+        )}
+
         <div className="bg-white border border-surface-border rounded-xl shadow-card overflow-hidden">
           <TransactionTable transactions={filtered} isLoading={isLoading} onEdit={setEdit} onDelete={setDelete}/>
         </div>
